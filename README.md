@@ -27,7 +27,7 @@ Resume Analyzer Pro is an AI-powered resume analysis tool that helps job seekers
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/resume-analyzer-pro.git
+git clone https://github.com/verus56/AI-Resume-Analyzer-Pro-/
 cd resume-analyzer-pro
 ```
 
