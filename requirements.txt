@@ -1,0 +1,13 @@
+streamlit
+google-generativeai
+python-docx2txt
+PyPDF2
+python-dotenv
+plotly
+wordcloud
+matplotlib
+pandas
+numpy
+streamlit-lottie
+streamlit-option-menu
+streamlit-extras
