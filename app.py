@@ -4,7 +4,7 @@ import os
 import docx2txt
 import PyPDF2 as pdf
 from dotenv import load_dotenv
-import json
+import json 
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
@@ -138,78 +138,174 @@ def create_timeline_chart(experience_data):
     )
 
     return fig
-# Prompt template
+
+
+
+def validate_response_structure(response_json):
+    """Validate that all required fields are present in the response"""
+    required_fields = {
+        'match_percentage': str,
+        'technical_skills': {
+            'matching_skills': list,
+            'missing_skills': list,
+            'skill_match_percentage': str
+        },
+        'experience_analysis': {
+            'years_of_experience': str,
+            'experience_match_percentage': str,
+            'key_achievements': list,
+            'career_progression': list
+        },
+        'education_analysis': {
+            'education_match': str,
+            'recommended_certifications': list
+        },
+        'improvement_suggestions': list,
+        'ats_compatibility': {
+            'format_score': str,
+            'issues_found': list,
+            'formatting_suggestions': list
+        },
+        'cultural_fit': {
+            'alignment_score': str,
+            'matching_values': list,
+            'development_areas': list
+        },
+        'industry_analysis': {
+            'industry_alignment': str,
+            'relevant_experience': list,
+            'industry_gaps': list
+        }
+    }
+
+    try:
+        data = json.loads(response_json)
+
+        def check_fields(required, actual):
+            for key, value_type in required.items():
+                if key not in actual:
+                    return False
+                if isinstance(value_type, dict):
+                    if not check_fields(value_type, actual[key]):
+                        return False
+                elif not isinstance(actual[key], value_type):
+                    return False
+                # Ensure lists are not empty
+                if isinstance(value_type, type) and value_type == list and not actual[key]:
+                    return False
+            return True
+
+        return check_fields(required_fields, data)
+    except:
+        return False
+
+
+# Update the prompt template to be more explicit
 input_prompt_template = """
-Analyze this resume against the job description. Focus especially on certifications, industry gaps, and development areas.
+Analyze this resume against the job description. You MUST provide all requested information and ensure no fields are empty.
 
 Resume: {text}
 Job Description: {job_description}
 Job Title: {job_title}
 
-Provide specific recommendations in this exact JSON format:
+IMPORTANT INSTRUCTIONS:
+1. You MUST analyze and provide ALL fields in the exact format below
+2. ALL lists MUST contain at least one item - never return empty lists
+3. If no specific items are found, provide relevant suggestions based on the job description
+4. ALL percentages must be calculated based on actual analysis
+5. Ensure each list field has at least 2-3 items
+
+Provide response in this exact JSON format:
 {{
-    "match_percentage": "80",
+    "match_percentage": "<calculated_percentage>",
     "technical_skills": {{
-        "matching_skills": ["skill1", "skill2"],
-        "missing_skills": ["skill3", "skill4"],
-        "skill_match_percentage": "75"
+        "matching_skills": ["MUST list at least 2-3 matching skills"],
+        "missing_skills": ["MUST list at least 2-3 missing skills"],
+        "skill_match_percentage": "<calculated_percentage>"
     }},
     "experience_analysis": {{
-        "years_of_experience": "5",
-        "experience_match_percentage": "70",
-        "key_achievements": ["achievement1", "achievement2"],
+        "years_of_experience": "<extracted_years>",
+        "experience_match_percentage": "<calculated_percentage>",
+        "key_achievements": ["MUST list at least 2-3 achievements"],
         "career_progression": [
             {{
-                "role": "Software Engineer",
-                "start_date": "2020",
-                "end_date": "2023"
+                "role": "<role>",
+                "start_date": "<start_date>",
+                "end_date": "<end_date>"
             }}
         ]
     }},
     "education_analysis": {{
-        "education_match": "85",
-        "recommended_certifications": [
-            "Specific certification related to job role",
-            "Industry-standard certification in the field",
-            "Technical certification for missing skills",
-            "Professional certification for career growth"
-        ]
+        "education_match": "<calculated_percentage>",
+        "recommended_certifications": ["MUST list at least 2-3 relevant certifications"]
     }},
-    "improvement_suggestions": ["suggestion1", "suggestion2"],
+    "improvement_suggestions": ["MUST list at least 2-3 suggestions"],
     "ats_compatibility": {{
-        "format_score": "90",
-        "issues_found": ["issue1", "issue2"],
-        "formatting_suggestions": ["format1", "format2"]
+        "format_score": "<calculated_percentage>",
+        "issues_found": ["MUST list at least 2-3 issues"],
+        "formatting_suggestions": ["MUST list at least 2-3 suggestions"]
     }},
     "cultural_fit": {{
-        "alignment_score": "80",
-        "matching_values": ["value1", "value2"],
-        "development_areas": [
-            "Specific development area based on job requirements",
-            "Soft skill that needs improvement",
-            "Technical area that needs strengthening",
-            "Professional development opportunity"
-        ]
+        "alignment_score": "<calculated_percentage>",
+        "matching_values": ["MUST list at least 2-3 values"],
+        "development_areas": ["MUST list at least 2-3 areas"]
     }},
     "industry_analysis": {{
-        "industry_alignment": "75",
-        "relevant_experience": ["exp1", "exp2"],
-        "industry_gaps": [
-            "Specific industry knowledge gap",
-            "Missing industry-specific experience",
-            "Required industry certification or training",
-            "Industry-specific tool or methodology"
-        ]
+        "industry_alignment": "<calculated_percentage>",
+        "relevant_experience": ["MUST list at least 2-3 experiences"],
+        "industry_gaps": ["MUST list at least 2-3 gaps"]
     }}
-}}
+}}"""
 
-Important:
-1. For recommended_certifications: Include specific, relevant certifications based on the job requirements and industry standards. If none, return an empty array.
-2. For industry_gaps: List specific missing industry knowledge, experiences, or qualifications required for the role. If none, return an empty array.
-3. For development_areas: Identify specific skills, competencies, or experiences that would enhance the candidate's fit for the role. If none, return an empty array.
-4. Ensure all arrays contain meaningful, specific items related to the job and industry."""
 
-# Function to generate response from Gemini
+# Update generate_response function with retry logic
+def generate_response(input_text, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            llm = genai.GenerativeModel(
+                model_name="gemini-pro",
+                generation_config=generation_config
+            )
+            output = llm.generate_content(input_text)
+            response_text = output.text.strip()
+            response_text = response_text.replace('```json', '').replace('```', '')
+
+            # Validate response structure and content
+            if validate_response_structure(response_text) and validate_percentages(response_text):
+                return response_text
+            else:
+                if attempt == max_retries - 1:
+                    st.error("Failed to generate a complete analysis after multiple attempts. Please try again.")
+                    return None
+                continue
+
+        except Exception as e:
+            if attempt == max_retries - 1:
+                st.error(f"Error generating response: {str(e)}")
+                return None
+            continue
+
+    return None
+
+
+# Add a function to validate percentages
+def validate_percentages(response_json):
+    """Validate that percentages are calculated and not hardcoded"""
+    try:
+        data = json.loads(response_json)
+        match_percentage = float(data['match_percentage'])
+        skill_match = float(data['technical_skills']['skill_match_percentage'])
+        exp_match = float(data['experience_analysis']['experience_match_percentage'])
+
+        # Check if percentages are varied (not hardcoded)
+        if len(set([match_percentage, skill_match, exp_match])) == 1:
+            return False
+        return True
+    except:
+        return False
+
+
+# Update the generate_response function
 def generate_response(input_text):
     try:
         llm = genai.GenerativeModel(
@@ -217,18 +313,14 @@ def generate_response(input_text):
             generation_config=generation_config
         )
         output = llm.generate_content(input_text)
-
-        # Clean the response
         response_text = output.text.strip()
         response_text = response_text.replace('```json', '').replace('```', '')
 
-        # Debug: Log the raw response
-        #st.write("Raw Response from Gemini:")
-        #st.code(response_text)
-
-        # Validate JSON
+        # Validate JSON and percentages
         try:
-            json.loads(response_text)
+            if not validate_percentages(response_text):
+                # Regenerate if percentages seem hardcoded
+                return generate_response(input_text)
             return response_text
         except json.JSONDecodeError as je:
             st.error(f"Invalid JSON format received. Please try again.")
