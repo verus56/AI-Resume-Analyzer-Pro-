@@ -112,32 +112,6 @@ The application is built using:
 - **Visualization**: Plotly, Matplotlib
 - **Document Processing**: PyPDF2, docx2txt
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Google Generative AI for providing the AI capabilities
-- Streamlit for the wonderful web framework
-- All contributors and users of the application
-
-## 📧 Contact
-
-For any queries or suggestions, please open an issue in the repository.
-
----
-Made with ❤️ by V56
 
 ## 📊 Performance Metrics
 - Processing speed: 2-3 seconds per resume
@@ -168,40 +142,32 @@ Made with ❤️ by V56
 - API integration options
 - Mobile app development
 
-## 🤖 AI Model Details
-- Based on GPT-3.5 architecture
-- Fine-tuned on 100,000+ resumes
-- Regular model updates
-- Custom NER training
-
 ## 💡 Best Practices
 - Use PDF format for best results
 - Keep resumes under 5MB
 - Follow standard resume formats
 - Regular system updates recommended
 
-## 📝 Version History
-- v1.0.0: Initial release
-- v1.1.0: Added multi-format support
-- v1.2.0: Performance improvements
-- v1.3.0: Security enhancements
+## 🤝 Contributing
 
-## 📚 Documentation
-- [API Documentation](docs/api.md)
-- [User Guide](docs/user-guide.md)
-- [Developer Guide](docs/dev-guide.md)
-- [FAQ](docs/faq.md)
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## ❤️ Support the Project
-- Star the repository
-- Report issues
-- Submit pull requests
-- Share feedback
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 🆘 Support
-- Email: support@airesume.com
-- Discord: [Join our community](https://discord.gg/airesume)
-- GitHub Issues
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📧 Contact
+
+For any queries or suggestions, please open an issue in the repository.
+
+---
+Made with ❤️ by V56
 
 ---
 © 2024 AI Resume Analyzer Pro. All rights reserved. | [Terms](terms.md) | [Privacy](privacy.md)
