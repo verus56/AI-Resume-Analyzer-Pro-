@@ -305,31 +305,23 @@ def validate_percentages(response_json):
         return False
 
 
-# Update the generate_response function
-def generate_response(input_text):
-    try:
-        llm = genai.GenerativeModel(
-            model_name="gemini-pro",
-            generation_config=generation_config
-        )
-        output = llm.generate_content(input_text)
-        response_text = output.text.strip()
-        response_text = response_text.replace('```json', '').replace('```', '')
+def generate_cover_letter_prompt(resume_text, job_description, job_title, company_name, personalization_options,
+                                 custom_prompt=""):
+    base_prompt = f"""
+    Create a professional cover letter based on this information:
+    Resume: {resume_text}
+    Job Description: {job_description}
+    Job Title: {job_title}
+    Company: {company_name}
 
-        # Validate JSON and percentages
-        try:
-            if not validate_percentages(response_text):
-                # Regenerate if percentages seem hardcoded
-                return generate_response(input_text)
-            return response_text
-        except json.JSONDecodeError as je:
-            st.error(f"Invalid JSON format received. Please try again.")
-            st.code(response_text)
-            return None
+    Style Preferences:
+    - Tone: {personalization_options['tone']}
+    - Length: {personalization_options['length']}
+    - Focus Areas: {', '.join(personalization_options['focus_areas'])}
+    {f"- Custom Instructions: {personalization_options['custom_instructions']}" if personalization_options['custom_instructions'] else ""}
+    """
 
-    except Exception as e:
-        st.error(f"Error generating response: {str(e)}")
-        return None
+    return custom_prompt + "\n" + base_prompt if custom_prompt else base_prompt
 
 
 def load_lottie_url(url: str):
@@ -346,8 +338,61 @@ def get_color_mode():
         st.session_state.color_mode = "light"
         return "light"
 
-# Main Streamlit app
 
+def generate_cover_letter(resume_text, job_description, job_title, company_name, personalization_options=None):
+    if personalization_options is None:
+        personalization_options = {
+            "tone": "Professional",
+            "length": "Standard",
+            "focus_areas": ["Technical Skills", "Industry Experience"],
+            "custom_instructions": ""
+        }
+
+    prompt = generate_cover_letter_prompt(resume_text, job_description, job_title, company_name,
+                                          personalization_options)
+    try:
+        llm = genai.GenerativeModel(
+            model_name="gemini-pro",
+            generation_config=generation_config
+        )
+        response = llm.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        st.error(f"Error generating cover letter: {str(e)}")
+        return None
+
+def regenerate_cover_letter(previous_letter, custom_prompt, resume_text, job_description, job_title, company_name, personalization_options):
+    prompt = f"""
+    Previous cover letter:
+    {previous_letter}
+
+    Resume: {resume_text}
+    Job Description: {job_description}
+    Job Title: {job_title}
+    Company: {company_name}
+
+    Additional instructions:
+    {custom_prompt}
+
+    Please regenerate the cover letter incorporating the above feedback while maintaining:
+    - Original job requirements alignment
+    - Professional formatting
+    - Company and role specifics
+    - Tone: {personalization_options['tone']}
+    - Length: {personalization_options['length']}
+    - Focus Areas: {', '.join(personalization_options['focus_areas'])}
+    """
+
+    try:
+        llm = genai.GenerativeModel(
+            model_name="gemini-pro",
+            generation_config=generation_config
+        )
+        response = llm.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        st.error(f"Error regenerating cover letter: {str(e)}")
+        return None
 
 def main():
     st.set_page_config(page_title="Resume Analyzer Pro", layout="wide")
@@ -437,7 +482,8 @@ def main():
             st_lottie(lottie_json, height=150)
 
     # Tabs
-    tabs = st.tabs(["🎯 Analysis", "🔍 ATS Check", "📈 Insights"])
+    tabs = st.tabs(["🎯 Analysis", "🔍 ATS Check", "📈 Insights", "✉️ Cover Letter"])
+
 
     with tabs[0]:
         col1, col2 = st.columns([1, 1])
@@ -591,5 +637,121 @@ def main():
                </div>
            """, unsafe_allow_html=True)
 
+    with tabs[3]:
+        # Initialize session state variables
+        if 'cover_letter_generated' not in st.session_state:
+            st.session_state.cover_letter_generated = False
+        if 'current_letter' not in st.session_state:
+            st.session_state.current_letter = None
+        if 'resume_text' not in st.session_state:
+            st.session_state.resume_text = None
+
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("✉️ Cover Letter Generator")
+
+        # Input fields
+        company_name = st.text_input("Company Name", placeholder="Enter company name", key='company_name')
+
+        col1, col2 = st.columns(2)
+        with col1:
+            tone = st.select_slider("Tone",
+                                    ["Formal", "Professional", "Confident", "Enthusiastic", "Casual"],
+                                    "Professional",
+                                    key='tone')
+            length = st.select_slider("Length",
+                                      ["Concise", "Standard", "Detailed"],
+                                      "Standard",
+                                      key='length')
+
+        with col2:
+            focus_areas = st.multiselect("Focus Areas",
+                                         ["Technical Skills", "Leadership", "Project Management",
+                                          "Innovation", "Team Collaboration", "Industry Experience"],
+                                         default=["Technical Skills", "Industry Experience"],
+                                         key='focus_areas')
+
+        custom_instructions = st.text_area("Custom Instructions (Optional)",
+                                           placeholder="Add specific requirements...",
+                                           key='custom_instructions')
+
+        # Initial generation button
+        if not st.session_state.cover_letter_generated:
+            if st.button("Generate Cover Letter", type="primary", key='generate_initial'):
+                if all([job_description, uploaded_file, job_title, company_name]):
+                    with st.spinner("Generating cover letter..."):
+                        # Extract text from resume
+                        text = extract_text_from_pdf(
+                            uploaded_file) if uploaded_file.type == "application/pdf" else extract_text_from_docx(
+                            uploaded_file)
+                        st.session_state.resume_text = text  # Store resume text in session state
+
+                        if text:
+                            personalization_options = {
+                                "tone": tone,
+                                "length": length,
+                                "focus_areas": focus_areas,
+                                "custom_instructions": custom_instructions
+                            }
+                            cover_letter = generate_cover_letter(text, job_description, job_title,
+                                                                 company_name, personalization_options)
+
+                            if cover_letter:
+                                st.session_state.current_letter = cover_letter
+                                st.session_state.cover_letter_generated = True
+                                st.rerun()
+                else:
+                    st.warning("Please provide all required information")
+
+        # Display current letter and regeneration options
+        if st.session_state.cover_letter_generated and st.session_state.current_letter:
+            st.markdown("### Generated Cover Letter:")
+            st.markdown(st.session_state.current_letter)
+
+            st.markdown("### Refine Your Letter")
+            refinement_prompt = st.text_area("Refinement Instructions",
+                                             placeholder="Enter specific changes or improvements...",
+                                             key='refinement_prompt')
+
+            if st.button("Regenerate Letter", key='regenerate'):
+                if st.session_state.resume_text:  # Use stored resume text
+                    with st.spinner("Refining cover letter..."):
+                        personalization_options = {
+                            "tone": tone,
+                            "length": length,
+                            "focus_areas": focus_areas,
+                            "custom_instructions": custom_instructions
+                        }
+                        refined_letter = regenerate_cover_letter(
+                            st.session_state.current_letter,
+                            refinement_prompt,
+                            st.session_state.resume_text,
+                            job_description,
+                            job_title,
+                            company_name,
+                            personalization_options
+                        )
+                        if refined_letter:
+                            st.session_state.current_letter = refined_letter
+                            st.rerun()
+
+            # Action buttons
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button("Copy to Clipboard"):
+                    st.success("Copied to clipboard!")
+            with col2:
+                if st.download_button("Download Letter",
+                                      st.session_state.current_letter,
+                                      "cover_letter.txt",
+                                      "text/plain"):
+                    st.success("Downloaded!")
+            with col3:
+                if st.button("Start Over"):
+                    st.session_state.cover_letter_generated = False
+                    st.session_state.current_letter = None
+                    st.session_state.resume_text = None
+                    st.rerun()
+
+        st.markdown('</div>', unsafe_allow_html=True)
 if __name__ == "__main__":
     main()
