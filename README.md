@@ -2,6 +2,8 @@
 
 Resume Analyzer Pro is an AI-powered resume analysis tool that helps job seekers optimize their resumes for specific job positions. Built with Streamlit and powered by Google's Gemini AI, this application provides comprehensive insights, ATS compatibility checks, and personalized recommendations.
 
+![AIweb](https://github.com/verus56/AI-Resume-Analyzer-Pro-/blob/main/1.png)
+
 ## 🌟 Features
 
 - **AI-Powered Analysis**: Utilizes Google's Gemini AI for intelligent resume parsing and analysis
